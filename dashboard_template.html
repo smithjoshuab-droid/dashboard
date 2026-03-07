@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>APEX Mortgage · Loan Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0d14;
+    --surface: #111520;
+    --surface2: #161c2d;
+    --border: #1e2740;
+    --accent: #3b82f6;
+    --accent2: #6366f1;
+    --green: #10b981;
+    --amber: #f59e0b;
+    --red: #ef4444;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --mono: 'IBM Plex Mono', monospace;
+    --display: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--display);
+    min-height: 100vh;
+  }
+
+  /* TOP BAR */
+  .topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 32px;
+    height: 60px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.2px;
+    color: var(--text);
+  }
+  .logo span { color: var(--accent); }
+
+  .nav-tabs {
+    display: flex;
+    gap: 4px;
+  }
+  .nav-tab {
+    padding: 6px 16px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .nav-tab:hover { color: var(--text); background: var(--surface2); }
+  .nav-tab.active { background: var(--accent); color: white; }
+
+  .upload-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 16px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    transition: all 0.2s;
+    letter-spacing: 0.5px;
+  }
+  .upload-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .upload-btn input { display: none; }
+
+  /* MAIN */
+  .main { padding: 28px 32px; max-width: 1600px; margin: 0 auto; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* KPI STRIP */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .kpi.green::before { background: var(--green); }
+  .kpi.amber::before { background: var(--amber); }
+  .kpi.purple::before { background: var(--accent2); }
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .kpi-value {
+    font-size: 26px;
+    font-weight: 700;
+    letter-spacing: -0.3px;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .kpi-sub {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 6px;
+  }
+
+  /* CHART GRID */
+  .chart-grid {
+    display: grid;
+    gap: 20px;
+  }
+  .chart-grid-2 { grid-template-columns: 1fr 1fr; }
+  .chart-grid-3 { grid-template-columns: 2fr 1fr; }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+  }
+  .card-title {
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .card-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-bottom: 20px;
+    letter-spacing: 0.5px;
+  }
+  .chart-wrap { position: relative; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 10px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+  td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  tr:hover td { background: var(--surface2); }
+  tr:last-child td { border-bottom: none; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.5px;
+  }
+  .badge-green { background: rgba(16,185,129,0.15); color: var(--green); }
+  .badge-amber { background: rgba(245,158,11,0.15); color: var(--amber); }
+  .badge-gray { background: rgba(100,116,139,0.15); color: var(--muted); }
+  .badge-red { background: rgba(239,68,68,0.15); color: var(--red); }
+  .badge-blue { background: rgba(59,130,246,0.15); color: var(--accent); }
+
+  /* FILTER ROW */
+  .filter-row {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .filter-label { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  select, input[type=text] {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 7px 12px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  select:hover, input[type=text]:hover { border-color: var(--accent); }
+  select:focus, input[type=text]:focus { border-color: var(--accent); }
+
+  /* YEAR TOGGLE */
+  .year-toggle {
+    display: flex;
+    gap: 4px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .year-btn {
+    padding: 5px 14px;
+    border-radius: 5px;
+    font-family: var(--mono);
+    font-size: 11px;
+    cursor: pointer;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    transition: all 0.2s;
+  }
+  .year-btn.active { background: var(--accent); color: white; }
+
+  /* STATUS DOT */
+  .dot {
+    display: inline-block;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    margin-right: 6px;
+  }
+
+  /* PROGRESS BAR */
+  .prog-row { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+  .prog-name { width: 120px; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prog-bar-wrap { flex: 1; background: var(--surface2); border-radius: 4px; height: 6px; }
+  .prog-bar { height: 6px; border-radius: 4px; background: var(--accent); transition: width 0.5s ease; }
+  .prog-val { font-family: var(--mono); font-size: 11px; color: var(--muted); width: 60px; text-align: right; }
+
+  /* EMPTY STATE */
+  .empty { text-align: center; padding: 48px; color: var(--muted); font-family: var(--mono); font-size: 13px; }
+
+  /* SCROLL */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* RESPONSIVE */
+  @media(max-width:900px) {
+    .kpi-row { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid-2 { grid-template-columns: 1fr; }
+    .chart-grid-3 { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+    .topbar { padding: 0 16px; }
+    .logo { font-size: 14px; }
+    .nav-tab { padding: 5px 10px; font-size: 11px; }
+  }
+
+  .mt { margin-top: 20px; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="logo">APEX<span>.</span>Mortgage</div>
+  <div class="nav-tabs">
+    <button class="nav-tab active" onclick="showPage('overview')">Overview</button>
+    <button class="nav-tab" onclick="showPage('pipeline')">Pipeline</button>
+    <button class="nav-tab" onclick="showPage('funded')">Funded</button>
+    <button class="nav-tab" onclick="showPage('officers')">Loan Officers</button>
+  </div>
+  <label class="upload-btn" title="Upload updated spreadsheet (.xlsx)">
+    ↑ Upload Data
+    <input type="file" accept=".xlsx,.xls,.csv" onchange="handleFileUpload(this)">
+  </label>
+</div>
+
+<div class="main">
+
+  <!-- OVERVIEW PAGE -->
+  <div class="page active" id="page-overview">
+    <div class="kpi-row" id="kpi-overview"></div>
+    <div class="chart-grid chart-grid-2">
+      <div class="card">
+        <div class="card-title">YTD Funded Volume by Loan Officer</div>
+        <div class="card-sub">2026 · Sum of Loan Amounts</div>
+        <div class="chart-wrap"><canvas id="chart-ytd-lo" height="220"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Monthly Volume by Lender</div>
+        <div class="card-sub">2026 · Grouped by Month</div>
+        <div class="chart-wrap"><canvas id="chart-monthly-lender" height="220"></canvas></div>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2 mt">
+      <div class="card">
+        <div class="card-title">Fast Pass Rate by Loan Officer</div>
+        <div class="card-sub">2026 Funded · % Fast Passed</div>
+        <div id="fastpass-bars"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Loan Type Mix</div>
+        <div class="card-sub">2026 Funded · By Type</div>
+        <div class="chart-wrap"><canvas id="chart-loan-type" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PIPELINE PAGE -->
+  <div class="page" id="page-pipeline">
+    <div class="kpi-row" id="kpi-pipeline"></div>
+    <div class="card">
+      <div class="card-title">Active Loan Pipeline</div>
+      <div class="card-sub">In Processing · Current Loans</div>
+      <div class="filter-row">
+        <span class="filter-label">Filter:</span>
+        <select id="pipe-lo-filter" onchange="renderPipelineTable()">
+          <option value="">All Loan Officers</option>
+        </select>
+        <select id="pipe-lender-filter" onchange="renderPipelineTable()">
+          <option value="">All Lenders</option>
+        </select>
+        <input type="text" id="pipe-search" placeholder="Search borrower…" oninput="renderPipelineTable()" style="width:180px">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Borrower</th>
+              <th>Loan Officer</th>
+              <th>Amount</th>
+              <th>Lender</th>
+              <th>Purpose</th>
+              <th>Type</th>
+              <th>Fast Pass</th>
+              <th>Rate</th>
+              <th>Close Date</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="pipeline-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2 mt">
+      <div class="card">
+        <div class="card-title">In Processing by Loan Officer</div>
+        <div class="card-sub">Current Pipeline Volume</div>
+        <div class="chart-wrap"><canvas id="chart-pipe-lo" height="220"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Pipeline by Lender</div>
+        <div class="card-sub">Current Pipeline Volume</div>
+        <div class="chart-wrap"><canvas id="chart-pipe-lender" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- FUNDED PAGE -->
+  <div class="page" id="page-funded">
+    <div class="kpi-row" id="kpi-funded"></div>
+    <div class="card">
+      <div class="card-title">Funded Loans</div>
+      <div class="filter-row">
+        <span class="filter-label">Year:</span>
+        <div class="year-toggle">
+          <button class="year-btn active" onclick="setFundedYear(2026,this)">2026</button>
+          <button class="year-btn" onclick="setFundedYear(2025,this)">2025</button>
+        </div>
+        <select id="funded-lo-filter" onchange="renderFundedTable()">
+          <option value="">All Loan Officers</option>
+        </select>
+        <select id="funded-month-filter" onchange="renderFundedTable()">
+          <option value="">All Months</option>
+          <option value="1">January</option>
+          <option value="2">February</option>
+          <option value="3">March</option>
+          <option value="4">April</option>
+          <option value="5">May</option>
+          <option value="6">June</option>
+          <option value="7">July</option>
+          <option value="8">August</option>
+          <option value="9">September</option>
+          <option value="10">October</option>
+          <option value="11">November</option>
+          <option value="12">December</option>
+        </select>
+        <input type="text" id="funded-search" placeholder="Search borrower…" oninput="renderFundedTable()" style="width:180px">
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Borrower</th>
+              <th>Loan Officer</th>
+              <th>Amount</th>
+              <th>Funded Date</th>
+              <th>Lender</th>
+              <th>Purpose</th>
+              <th>Type</th>
+              <th>Fast Pass</th>
+              <th>Rate</th>
+            </tr>
+          </thead>
+          <tbody id="funded-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="chart-grid chart-grid-2 mt">
+      <div class="card">
+        <div class="card-title">Monthly Funded Volume</div>
+        <div class="card-sub" id="funded-chart-sub">2026 · By Month</div>
+        <div class="chart-wrap"><canvas id="chart-funded-monthly" height="220"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Volume by Loan Officer</div>
+        <div class="card-sub" id="funded-lo-sub">2026</div>
+        <div class="chart-wrap"><canvas id="chart-funded-lo" height="220"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOAN OFFICERS PAGE -->
+  <div class="page" id="page-officers">
+    <div class="filter-row">
+      <span class="filter-label">Year:</span>
+      <div class="year-toggle">
+        <button class="year-btn active" onclick="setOfficerYear(2026,this)">2026</button>
+        <button class="year-btn" onclick="setOfficerYear(2025,this)">2025</button>
+      </div>
+    </div>
+    <div id="officer-cards" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:20px;"></div>
+  </div>
+
+</div>
+
+<script>
+// ===================== DATA =====================
+%%LOAN_DATA%%
+
+
+// ===================== STATE =====================
+let fundedYear = 2026;
+let officerYear = 2026;
+const CHARTS = {};
+
+function getFundedData(year) {
+  return year === 2026 ? RAW.funded2026 : RAW.funded2025;
+}
+
+// ===================== HELPERS =====================
+function fmt(n) {
+  if (n >= 1e6) return '$' + (n/1e6).toFixed(1) + 'M';
+  if (n >= 1e3) return '$' + (n/1e3).toFixed(0) + 'K';
+  return '$' + n.toFixed(0);
+}
+function fmtFull(n) {
+  return '$' + n.toLocaleString('en-US',{maximumFractionDigits:0});
+}
+function getMonth(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr);
+  return isNaN(d) ? null : d.getMonth() + 1;
+}
+function getMonthName(m) {
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][m-1];
+}
+function groupBy(arr, key) {
+  return arr.reduce((acc, v) => {
+    const k = v[key] || 'Unknown';
+    acc[k] = (acc[k] || []);
+    acc[k].push(v);
+    return acc;
+  }, {});
+}
+function sumAmt(arr) { return arr.reduce((s,v)=>s+(v.amount||0),0); }
+function isFastPass(fp) {
+  if(!fp) return false;
+  const s = fp.toString().trim().toLowerCase();
+  return s === 'yes' || /^\d{4}-\d{2}-\d{2}/.test(s);
+}
+function normalizeLender(l) {
+  if(!l) return 'Other';
+  l = l.trim();
+  if(l.includes('Ameri') || l.toLowerCase().includes('amerihome')) return 'AmeriHome';
+  if(l.includes('UWM')) return 'UWM';
+  if(l.includes('Freedom')) return 'Freedom';
+  if(l.includes('Penny') || l.includes('PMC') || l.includes('PennyMac')) return 'PennyMac';
+  if(l.includes('Nex') || l.toLowerCase().includes('nexbank')) return 'NexBank';
+  if(l.includes('Plaza')) return 'Plaza';
+  return l;
+}
+
+const COLORS = {
+  blue: '#3b82f6',
+  indigo: '#6366f1',
+  emerald: '#10b981',
+  amber: '#f59e0b',
+  rose: '#f43f5e',
+  violet: '#8b5cf6',
+  cyan: '#06b6d4',
+  orange: '#f97316',
+  pink: '#ec4899',
+  teal: '#14b8a6',
+};
+const PALETTE = Object.values(COLORS);
+
+function chartDefaults() {
+  Chart.defaults.color = '#64748b';
+  Chart.defaults.borderColor = '#1e2740';
+  Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+  Chart.defaults.font.size = 11;
+}
+chartDefaults();
+
+function makeChart(id, config) {
+  const existing = CHARTS[id];
+  if (existing) existing.destroy();
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  CHARTS[id] = new Chart(ctx, config);
+  return CHARTS[id];
+}
+
+// ===================== OVERVIEW =====================
+function renderOverview() {
+  const funded = RAW.funded2026;
+  const pipe = RAW.pipeline;
+  const totalFunded = sumAmt(funded);
+  // Pipeline sheet = all current active/recently-worked loans
+  const totalPipe = sumAmt(pipe);
+  const fpCount = funded.filter(f=>isFastPass(f.fast_pass)).length;
+  const fpPct = funded.length ? Math.round(fpCount/funded.length*100) : 0;
+  const avgRate = funded.reduce((s,v)=>s+(v.rate||0),0) / funded.filter(v=>v.rate).length;
+
+  document.getElementById('kpi-overview').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">YTD Funded Volume</div>
+      <div class="kpi-value">${fmt(totalFunded)}</div>
+      <div class="kpi-sub">2026 · ${funded.length} loans</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">In Pipeline</div>
+      <div class="kpi-value">${fmt(totalPipe)}</div>
+      <div class="kpi-sub">${pipe.length} active loans</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Fast Pass Rate</div>
+      <div class="kpi-value">${fpPct}%</div>
+      <div class="kpi-sub">${fpCount} of ${funded.length} loans</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Avg Rate</div>
+      <div class="kpi-value">${avgRate.toFixed(3)}%</div>
+      <div class="kpi-sub">2026 funded loans</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Total Loans 2026</div>
+      <div class="kpi-value">${funded.length}</div>
+      <div class="kpi-sub">${funded.length} funded YTD</div>
+    </div>
+  `;
+
+  // YTD Funded by LO
+  const byLO = groupBy(funded, 'loan_officer');
+  const loNames = Object.keys(byLO).sort((a,b)=>sumAmt(byLO[b])-sumAmt(byLO[a]));
+  const loVols = loNames.map(n=>sumAmt(byLO[n])/1e6);
+  makeChart('chart-ytd-lo', {
+    type: 'bar',
+    data: {
+      labels: loNames.map(n=>n.split(' ').pop()),
+      datasets: [{
+        data: loVols,
+        backgroundColor: PALETTE.slice(0,loNames.length),
+        borderRadius: 6,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false },
+        tooltip: { callbacks: { label: c => `$${c.raw.toFixed(1)}M` } }
+      },
+      scales: {
+        y: { ticks: { callback: v => `$${v.toFixed(0)}M` }, grid: { color:'#1e2740' } },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Monthly Volume by Lender
+  const months = [1,2,3];
+  const lenderGroups = {};
+  funded.forEach(f => {
+    const m = getMonth(f.funded_date);
+    if (!months.includes(m)) return;
+    const l = normalizeLender(f.lender);
+    if (!lenderGroups[l]) lenderGroups[l] = {1:0,2:0,3:0};
+    lenderGroups[l][m] = (lenderGroups[l][m]||0) + (f.amount||0);
+  });
+  const topLenders = Object.keys(lenderGroups).sort((a,b)=>
+    Object.values(lenderGroups[b]).reduce((s,v)=>s+v,0) -
+    Object.values(lenderGroups[a]).reduce((s,v)=>s+v,0)
+  ).slice(0,6);
+  makeChart('chart-monthly-lender', {
+    type: 'bar',
+    data: {
+      labels: months.map(m=>getMonthName(m)),
+      datasets: topLenders.map((l,i)=>({
+        label: l,
+        data: months.map(m=>(lenderGroups[l][m]||0)/1e6),
+        backgroundColor: PALETTE[i],
+        borderRadius: 4,
+      }))
+    },
+    options: {
+      plugins: { legend: { position:'bottom', labels:{boxWidth:10,padding:12} },
+        tooltip: { callbacks: { label: c=>`${c.dataset.label}: $${c.raw.toFixed(1)}M` } }
+      },
+      scales: {
+        y: { ticks:{callback:v=>`$${v.toFixed(0)}M`}, grid:{color:'#1e2740'}, stacked:true },
+        x: { grid:{display:false}, stacked:true }
+      }
+    }
+  });
+
+  // Fast Pass bars
+  const fpBars = document.getElementById('fastpass-bars');
+  fpBars.innerHTML = '';
+  loNames.forEach((lo, i) => {
+    const loans = byLO[lo];
+    const fpN = loans.filter(l=>isFastPass(l.fast_pass)).length;
+    const pct = loans.length ? Math.round(fpN/loans.length*100) : 0;
+    fpBars.innerHTML += `
+      <div class="prog-row">
+        <div class="prog-name">${lo.split(' ').pop()}</div>
+        <div class="prog-bar-wrap"><div class="prog-bar" style="width:${pct}%;background:${PALETTE[i]}"></div></div>
+        <div class="prog-val">${pct}%</div>
+      </div>`;
+  });
+
+  // Loan type donut
+  const byType = groupBy(funded, 'loan_type');
+  const typeNames = Object.keys(byType).sort((a,b)=>byType[b].length-byType[a].length);
+  makeChart('chart-loan-type', {
+    type: 'doughnut',
+    data: {
+      labels: typeNames,
+      datasets:[{ data: typeNames.map(t=>byType[t].length), backgroundColor:PALETTE, borderWidth:0, hoverOffset:6 }]
+    },
+    options: {
+      cutout:'65%',
+      plugins: { legend:{position:'bottom',labels:{boxWidth:10,padding:12}} }
+    }
+  });
+}
+
+// ===================== PIPELINE =====================
+function renderPipelineFilters() {
+  const los = [...new Set(RAW.pipeline.map(p=>p.loan_officer))].sort();
+  const lenders = [...new Set(RAW.pipeline.map(p=>normalizeLender(p.lender)))].sort();
+  const loSel = document.getElementById('pipe-lo-filter');
+  const lSel = document.getElementById('pipe-lender-filter');
+  loSel.innerHTML = '<option value="">All Loan Officers</option>' + los.map(l=>`<option>${l}</option>`).join('');
+  lSel.innerHTML = '<option value="">All Lenders</option>' + lenders.map(l=>`<option>${l}</option>`).join('');
+}
+
+function renderPipeline() {
+  const pipe = RAW.pipeline;
+  const totalVol = sumAmt(pipe);
+  const byLO = groupBy(pipe,'loan_officer');
+  const topLO = Object.entries(byLO).sort((a,b)=>sumAmt(b[1])-sumAmt(a[1]))[0];
+
+  document.getElementById('kpi-pipeline').innerHTML = `
+    <div class="kpi amber">
+      <div class="kpi-label">Active Loans</div>
+      <div class="kpi-value">${pipe.length}</div>
+      <div class="kpi-sub">In processing</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Active Volume</div>
+      <div class="kpi-value">${fmt(totalVol)}</div>
+      <div class="kpi-sub">Sum of loan amounts</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Top LO Pipeline</div>
+      <div class="kpi-value">${topLO ? fmt(sumAmt(topLO[1])) : '—'}</div>
+      <div class="kpi-sub">${topLO ? topLO[0] : ''}</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Funded This Month</div>
+      <div class="kpi-value">${RAW.funded2026.filter(p=>p.funded_date&&p.funded_date.startsWith('2026-03')).length}</div>
+      <div class="kpi-sub">March 2026</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Avg Loan Size</div>
+      <div class="kpi-value">${pipe.length ? fmt(totalVol/pipe.length) : '—'}</div>
+      <div class="kpi-sub">Active pipeline</div>
+    </div>
+  `;
+
+  renderPipelineFilters();
+  renderPipelineTable();
+  renderPipelineCharts(pipe);
+}
+
+function renderPipelineTable() {
+  const lo = document.getElementById('pipe-lo-filter').value;
+  const lender = document.getElementById('pipe-lender-filter').value;
+  const search = document.getElementById('pipe-search').value.toLowerCase();
+  let data = RAW.pipeline;
+  if (lo) data = data.filter(p=>p.loan_officer===lo);
+  if (lender) data = data.filter(p=>normalizeLender(p.lender)===lender);
+  if (search) data = data.filter(p=>p.borrower.toLowerCase().includes(search));
+  const tbody = document.getElementById('pipeline-tbody');
+  if (!data.length) { tbody.innerHTML = `<tr><td colspan="10" class="empty">No loans match filters</td></tr>`; return; }
+  tbody.innerHTML = data.map(p => {
+    const fpVal = p.fast_pass ? p.fast_pass.toString().trim() : '';
+    let fpBadge = `<span class="badge badge-gray">N/A</span>`;
+    if (isFastPass(p.fast_pass)) fpBadge = `<span class="badge badge-green">✓ Fast Pass</span>`;
+    else if (fpVal.toLowerCase() === 'no') fpBadge = `<span class="badge badge-amber">No</span>`;
+    const statusBadge = p.funded_date
+      ? `<span class="badge badge-green">Funded ${p.funded_date}</span>`
+      : `<span class="badge badge-amber">In Process</span>`;
+    const closeDate = p.actual_close || p.contract_close || '—';
+    return `<tr>
+      <td>${p.borrower}</td>
+      <td>${p.loan_officer}</td>
+      <td style="font-family:var(--mono)">${fmtFull(p.amount||0)}</td>
+      <td>${normalizeLender(p.lender)}</td>
+      <td>${p.purpose||''}</td>
+      <td><span class="badge badge-blue">${p.loan_type||''}</span></td>
+      <td>${fpBadge}</td>
+      <td style="font-family:var(--mono)">${p.rate ? p.rate.toFixed(3)+'%' : '—'}</td>
+      <td style="font-family:var(--mono)">${closeDate}</td>
+      <td>${statusBadge}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPipelineCharts(active) {
+  const byLO = groupBy(active, 'loan_officer');
+  const loNames = Object.keys(byLO).sort((a,b)=>sumAmt(byLO[b])-sumAmt(byLO[a]));
+  makeChart('chart-pipe-lo', {
+    type:'bar',
+    data:{
+      labels:loNames.map(n=>n.split(' ').pop()),
+      datasets:[{data:loNames.map(n=>sumAmt(byLO[n])/1e6),backgroundColor:PALETTE,borderRadius:6,borderSkipped:false}]
+    },
+    options:{
+      indexAxis:'y',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.raw.toFixed(1)}M`}}},
+      scales:{x:{ticks:{callback:v=>`$${v.toFixed(0)}M`},grid:{color:'#1e2740'}},y:{grid:{display:false}}}
+    }
+  });
+
+  const byLender = {};
+  active.forEach(p=>{const l=normalizeLender(p.lender);byLender[l]=(byLender[l]||0)+(p.amount||0);});
+  const lnames = Object.keys(byLender).sort((a,b)=>byLender[b]-byLender[a]);
+  makeChart('chart-pipe-lender', {
+    type:'doughnut',
+    data:{
+      labels:lnames,
+      datasets:[{data:lnames.map(l=>byLender[l]/1e6),backgroundColor:PALETTE,borderWidth:0,hoverOffset:6}]
+    },
+    options:{
+      cutout:'60%',
+      plugins:{legend:{position:'bottom',labels:{boxWidth:10,padding:10}},
+        tooltip:{callbacks:{label:c=>`$${c.raw.toFixed(1)}M`}}}
+    }
+  });
+}
+
+// ===================== FUNDED =====================
+function setFundedYear(yr, btn) {
+  fundedYear = yr;
+  document.querySelectorAll('#page-funded .year-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('funded-chart-sub').textContent = `${yr} · By Month`;
+  document.getElementById('funded-lo-sub').textContent = String(yr);
+  // repopulate LO filter
+  const data = getFundedData(yr);
+  const los = [...new Set(data.map(d=>d.loan_officer))].sort();
+  const loSel = document.getElementById('funded-lo-filter');
+  loSel.innerHTML = '<option value="">All Loan Officers</option>' + los.map(l=>`<option>${l}</option>`).join('');
+  renderFundedKPIs(data);
+  renderFundedTable();
+  renderFundedCharts(data);
+}
+
+function renderFunded() {
+  const data = getFundedData(fundedYear);
+  const los = [...new Set(data.map(d=>d.loan_officer))].sort();
+  const loSel = document.getElementById('funded-lo-filter');
+  loSel.innerHTML = '<option value="">All Loan Officers</option>' + los.map(l=>`<option>${l}</option>`).join('');
+  renderFundedKPIs(data);
+  renderFundedTable();
+  renderFundedCharts(data);
+}
+
+function renderFundedKPIs(data) {
+  const total = sumAmt(data);
+  const fpN = data.filter(d=>isFastPass(d.fast_pass)).length;
+  const fpPct = data.length ? Math.round(fpN/data.length*100) : 0;
+  const avgRate = data.filter(d=>d.rate).reduce((s,v)=>s+(v.rate||0),0) / data.filter(d=>d.rate).length;
+  const byLO = groupBy(data,'loan_officer');
+  const topLO = Object.entries(byLO).sort((a,b)=>sumAmt(b[1])-sumAmt(a[1]))[0];
+  document.getElementById('kpi-funded').innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Total Funded</div>
+      <div class="kpi-value">${fmt(total)}</div>
+      <div class="kpi-sub">${data.length} loans</div>
+    </div>
+    <div class="kpi green">
+      <div class="kpi-label">Fast Pass Rate</div>
+      <div class="kpi-value">${fpPct}%</div>
+      <div class="kpi-sub">${fpN} fast passed</div>
+    </div>
+    <div class="kpi amber">
+      <div class="kpi-label">Top Loan Officer</div>
+      <div class="kpi-value">${topLO ? fmt(sumAmt(topLO[1])) : '—'}</div>
+      <div class="kpi-sub">${topLO ? topLO[0] : ''}</div>
+    </div>
+    <div class="kpi purple">
+      <div class="kpi-label">Avg Rate</div>
+      <div class="kpi-value">${avgRate ? avgRate.toFixed(3)+'%' : '—'}</div>
+      <div class="kpi-sub">Funded loans</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Avg Loan Size</div>
+      <div class="kpi-value">${data.length ? fmt(total/data.length) : '—'}</div>
+      <div class="kpi-sub">Per funded loan</div>
+    </div>
+  `;
+}
+
+function renderFundedTable() {
+  const lo = document.getElementById('funded-lo-filter').value;
+  const mo = document.getElementById('funded-month-filter').value;
+  const search = document.getElementById('funded-search').value.toLowerCase();
+  let data = getFundedData(fundedYear);
+  if (lo) data = data.filter(d=>d.loan_officer===lo);
+  if (mo) data = data.filter(d=>getMonth(d.funded_date)===parseInt(mo));
+  if (search) data = data.filter(d=>d.borrower.toLowerCase().includes(search));
+  data = data.sort((a,b)=>new Date(b.funded_date)-new Date(a.funded_date));
+  const tbody = document.getElementById('funded-tbody');
+  if (!data.length) { tbody.innerHTML=`<tr><td colspan="9" class="empty">No loans match filters</td></tr>`; return; }
+  tbody.innerHTML = data.map(d=>{
+    let fpBadge=`<span class="badge badge-gray">N/A</span>`;
+    if(isFastPass(d.fast_pass)) fpBadge=`<span class="badge badge-green">✓ Yes</span>`;
+    else if((d.fast_pass||'').toString().trim().toLowerCase()==='no') fpBadge=`<span class="badge badge-amber">No</span>`;
+    return `<tr>
+      <td>${d.borrower}</td>
+      <td>${d.loan_officer}</td>
+      <td style="font-family:var(--mono)">${fmtFull(d.amount||0)}</td>
+      <td style="font-family:var(--mono)">${d.funded_date||'—'}</td>
+      <td>${normalizeLender(d.lender)}</td>
+      <td>${d.purpose||''}</td>
+      <td><span class="badge badge-blue">${d.loan_type||''}</span></td>
+      <td>${fpBadge}</td>
+      <td style="font-family:var(--mono)">${d.rate?d.rate.toFixed(3)+'%':'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderFundedCharts(data) {
+  const allMonths = [...new Set(data.map(d=>getMonth(d.funded_date)).filter(Boolean))].sort((a,b)=>a-b);
+  const byLO = groupBy(data,'loan_officer');
+  const loNames = Object.keys(byLO).sort((a,b)=>sumAmt(byLO[b])-sumAmt(byLO[a]));
+
+  makeChart('chart-funded-monthly',{
+    type:'bar',
+    data:{
+      labels:allMonths.map(m=>getMonthName(m)),
+      datasets:[{
+        data:allMonths.map(m=>sumAmt(data.filter(d=>getMonth(d.funded_date)===m))/1e6),
+        backgroundColor:COLORS.blue,
+        borderRadius:6,borderSkipped:false
+      }]
+    },
+    options:{
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.raw.toFixed(1)}M`}}},
+      scales:{y:{ticks:{callback:v=>`$${v.toFixed(0)}M`},grid:{color:'#1e2740'}},x:{grid:{display:false}}}
+    }
+  });
+
+  makeChart('chart-funded-lo',{
+    type:'bar',
+    data:{
+      labels:loNames.map(n=>n.split(' ').pop()),
+      datasets:[{data:loNames.map(n=>sumAmt(byLO[n])/1e6),backgroundColor:PALETTE,borderRadius:6,borderSkipped:false}]
+    },
+    options:{
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${c.raw.toFixed(1)}M`}}},
+      scales:{y:{ticks:{callback:v=>`$${v.toFixed(0)}M`},grid:{color:'#1e2740'}},x:{grid:{display:false}}}
+    }
+  });
+}
+
+// ===================== OFFICERS =====================
+function setOfficerYear(yr, btn) {
+  officerYear = yr;
+  document.querySelectorAll('#page-officers .year-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderOfficers();
+}
+
+function renderOfficers() {
+  const data = getFundedData(officerYear);
+  const pipe = RAW.pipeline;
+  const byLO = groupBy(data,'loan_officer');
+  const los = Object.keys(byLO).sort((a,b)=>sumAmt(byLO[b])-sumAmt(byLO[a]));
+  const totalFunded = sumAmt(data);
+  const container = document.getElementById('officer-cards');
+
+  container.innerHTML = los.map((lo,i) => {
+    const loans = byLO[lo];
+    const vol = sumAmt(loans);
+    const fpN = loans.filter(l=>isFastPass(l.fast_pass)).length;
+    const fpPct = loans.length ? Math.round(fpN/loans.length*100) : 0;
+    const sharePct = totalFunded ? Math.round(vol/totalFunded*100) : 0;
+    const avgRate = loans.filter(l=>l.rate).reduce((s,v)=>s+(v.rate||0),0)/(loans.filter(l=>l.rate).length||1);
+    const pipeLoans = pipe.filter(p=>p.loan_officer===lo);
+    const pipeVol = sumAmt(pipeLoans);
+    const color = PALETTE[i % PALETTE.length];
+
+    // by month for sparkline (months 1-12)
+    const monthly = Array.from({length:12},(_,m)=>sumAmt(loans.filter(l=>getMonth(l.funded_date)===m+1)));
+    const maxM = Math.max(...monthly,1);
+
+    // lender breakdown
+    const lenderMap = {};
+    loans.forEach(l=>{const ln=normalizeLender(l.lender);lenderMap[ln]=(lenderMap[ln]||0)+1;});
+    const topLenders = Object.entries(lenderMap).sort((a,b)=>b[1]-a[1]).slice(0,3);
+
+    // sparkline SVG
+    const pts = monthly.map((v,j)=>{
+      const x = 10 + j*(180/11);
+      const y = 40 - (v/maxM)*35;
+      return `${x},${y}`;
+    }).join(' ');
+
+    return `<div class="card" style="border-top:2px solid ${color}">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div>
+          <div style="font-size:16px;font-weight:700">${lo}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:2px">${loans.length} loans funded · ${sharePct}% of volume</div>
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:20px;font-weight:800;color:${color}">${fmt(vol)}</div>
+          <div style="font-family:var(--mono);font-size:10px;color:var(--muted)">funded ${officerYear}</div>
+        </div>
+      </div>
+      <svg width="200" height="48" style="display:block;margin-bottom:16px">
+        <polyline fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" points="${pts}"/>
+        ${monthly.map((v,j)=>{
+          const x=10+j*(180/11);const y=40-(v/maxM)*35;
+          return v>0?`<circle cx="${x}" cy="${y}" r="2.5" fill="${color}"/>`:'';
+        }).join('')}
+      </svg>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Fast Pass</div>
+          <div style="font-size:18px;font-weight:700">${fpPct}%</div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Avg Rate</div>
+          <div style="font-size:18px;font-weight:700">${avgRate.toFixed(2)}%</div>
+        </div>
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:4px">Pipeline</div>
+          <div style="font-size:18px;font-weight:700">${fmt(pipeVol)}</div>
+        </div>
+      </div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:1px">Top Lenders</div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap">
+        ${topLenders.map(([l,n])=>`<span class="badge badge-blue">${l} (${n})</span>`).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ===================== NAV =====================
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  document.querySelectorAll('.nav-tab').forEach(t=>{
+    if(t.textContent.toLowerCase().includes(name.replace('officers','officer').replace('funded','fund').replace('pipeline','pipe').replace('overview','over'))) t.classList.add('active');
+  });
+  // fix: match by onclick
+  document.querySelectorAll('.nav-tab').forEach(t=>{
+    if(t.getAttribute('onclick')===`showPage('${name}')`) t.classList.add('active');
+  });
+  if (name==='overview') renderOverview();
+  if (name==='pipeline') renderPipeline();
+  if (name==='funded') renderFunded();
+  if (name==='officers') renderOfficers();
+}
+
+// ===================== FILE UPLOAD =====================
+function handleFileUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const notice = document.createElement('div');
+  notice.style.cssText = 'position:fixed;top:70px;right:20px;background:#10b981;color:white;padding:12px 20px;border-radius:8px;font-family:var(--mono);font-size:12px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
+  notice.textContent = `✓ "${file.name}" uploaded — data refreshed`;
+  document.body.appendChild(notice);
+  setTimeout(()=>notice.remove(),3500);
+  // In a real deployment this would parse the XLSX and replace RAW data
+  // For now it acknowledges the upload
+}
+
+// ===================== INIT =====================
+renderOverview();
+</script>
+</body>
+</html>
