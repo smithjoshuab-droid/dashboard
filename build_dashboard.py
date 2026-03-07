@@ -79,6 +79,7 @@ def read_pipeline(wb):
             "actual_close":  parse_date(d.get("Actual Close Date")),
             "funded_date":   parse_date(d.get("Funded Date")),
             "rate":          to_num(d.get("Interest Rate")),
+            "processor":     str(d.get("Processor","") or d.get("Loan Processor","") or "").strip(),
         })
     return rows
 
