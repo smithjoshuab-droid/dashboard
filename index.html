@@ -764,7 +764,7 @@ function renderPipelineTable() {
   if (lo)        data = data.filter(p => p.loan_officer === lo);
   if (lender)    data = data.filter(p => normalizeLender(p.lender) === lender);
   if (processor) data = data.filter(p => (p.processor||'') === processor);
-  if (mtd === 'funded_mtd')   data = data.filter(p => p.funded_date && p.funded_date.startsWith(monthPfx) && p.funded_date <= today);
+  if (mtd === 'funded_mtd')   data = data.filter(p => p.funded_date && p.funded_date.startsWith(monthPfx));
   if (mtd === 'left_to_fund') data = data.filter(p => p.funded_date && p.funded_date.startsWith(monthPfx) && p.funded_date > today);
   if (search)    data = data.filter(p => p.borrower.toLowerCase().includes(search));
   const tbody = document.getElementById('pipeline-tbody');
