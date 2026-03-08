@@ -361,6 +361,7 @@
         <select id="pipe-mtd-filter" onchange="renderPipelineTable()">
           <option value="">All Loans</option>
           <option value="funded_mtd">Funded MTD</option>
+          <option value="funded_prev_month">Funded Previous Month</option>
           <option value="left_to_fund">Left To Fund MTD</option>
         </select>
         <input type="text" id="pipe-search" placeholder="Search borrower…" oninput="renderPipelineTable()" style="width:180px">
@@ -786,6 +787,19 @@ function renderPipelineTable() {
     if (search)    f = f.filter(p => p.borrower.toLowerCase().includes(search));
     tbody.innerHTML = f.length ? f.map(p => buildRow(p, '—', `<span class="badge badge-green">Funded ${p.funded_date}</span>`)).join('')
                                : `<tr><td colspan="11" class="empty">No funded loans this month</td></tr>`;
+    return;
+  }
+
+  if (mtd === 'funded_prev_month') {
+    // SOURCE: Apex Funded 2026 — loans funded in the previous calendar month
+    const prevPfx = new Date(new Date().getFullYear(), new Date().getMonth() - 1, 1).toISOString().slice(0,7);
+    let f = RAW.funded2026.filter(p => p.funded_date && p.funded_date.startsWith(prevPfx));
+    if (lo)        f = f.filter(p => p.loan_officer === lo);
+    if (lender)    f = f.filter(p => normalizeLender(p.lender) === lender);
+    if (processor) f = f.filter(p => (p.processor||'') === processor);
+    if (search)    f = f.filter(p => p.borrower.toLowerCase().includes(search));
+    tbody.innerHTML = f.length ? f.map(p => buildRow(p, '—', `<span class="badge badge-green">Funded ${p.funded_date}</span>`)).join('')
+                               : `<tr><td colspan="11" class="empty">No loans funded last month</td></tr>`;
     return;
   }
 
