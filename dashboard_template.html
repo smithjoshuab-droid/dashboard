@@ -736,7 +736,7 @@ function renderPipeline() {
     </div>
     <div class="kpi">
       <div class="kpi-label">Funded This Month</div>
-      <div class="kpi-value">${RAW.funded2026.filter(p=>p.funded_date&&p.funded_date.startsWith('2026-03')).length}</div>
+      <div class="kpi-value">${RAW.funded2026.filter(p=>p.funded_date&&p.funded_date.startsWith(new Date().toISOString().slice(0,7))).length}</div>
       <div class="kpi-sub">March 2026</div>
     </div>
     <div class="kpi purple">
@@ -1072,7 +1072,7 @@ function showPage(name) {
     if(t.getAttribute('onclick')===`showPage('${name}')`) t.classList.add('active');
   });
   if (name==='overview') renderOverview();
-  if (name==='pipeline') renderPipeline();
+  if (name==='pipeline') { renderPipeline(); }
   if (name==='funded') renderFunded();
   if (name==='officers') renderOfficers();
 }
