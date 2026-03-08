@@ -2,8 +2,12 @@ name: Refresh Dashboard
 
 on:
   schedule:
-    # 9:00 AM Central Standard Time = 15:00 UTC
+    # 9:00 AM CST = 15:00 UTC
     - cron: '0 15 * * 1-5'
+    # 12:00 PM CST = 18:00 UTC
+    - cron: '0 18 * * 1-5'
+    # 4:00 PM CST = 22:00 UTC
+    - cron: '0 22 * * 1-5'
   workflow_dispatch:
 
 jobs:
