@@ -762,30 +762,41 @@ function renderPipelineTable() {
   const monthPfx  = today.slice(0,7);
   const tbody     = document.getElementById('pipeline-tbody');
 
-  // ── Funded MTD: pull from Apex Funded 2026 sheet ──
+  function buildRow(p, closeDate, statusBadge) {
+    const fpVal = p.fast_pass ? p.fast_pass.toString().trim() : '';
+    let fpBadge = `<span class="badge badge-gray">N/A</span>`;
+    if (fpVal.toLowerCase() !== 'n/a' && fpVal !== '') fpBadge = `<span class="badge badge-green">✓ Fast Pass</span>`;
+    if (fpVal.toLowerCase() === 'no') fpBadge = `<span class="badge badge-amber">No</span>`;
+    return `<tr>
+      <td>${p.borrower}</td><td>${p.loan_officer}</td><td>${p.processor||'—'}</td>
+      <td style="font-family:var(--mono)">${fmtFull(p.amount||0)}</td>
+      <td>${normalizeLender(p.lender)}</td><td>${p.purpose||''}</td>
+      <td><span class="badge badge-blue">${p.loan_type||''}</span></td>
+      <td>${fpBadge}</td>
+      <td style="font-family:var(--mono)">${p.rate ? p.rate.toFixed(3)+'%' : '—'}</td>
+      <td>${closeDate||'—'}</td><td>${statusBadge}</td>
+    </tr>`;
+  }
+
   if (mtd === 'funded_mtd') {
     let f = RAW.funded2026.filter(p => p.funded_date && p.funded_date.startsWith(monthPfx) && p.funded_date <= today);
     if (lo)        f = f.filter(p => p.loan_officer === lo);
     if (lender)    f = f.filter(p => normalizeLender(p.lender) === lender);
     if (processor) f = f.filter(p => (p.processor||'') === processor);
     if (search)    f = f.filter(p => p.borrower.toLowerCase().includes(search));
-    if (!f.length) { tbody.innerHTML = `<tr><td colspan="11" class="empty">No funded loans this month</td></tr>`; return; }
-    tbody.innerHTML = f.map(p => {
-      const fpVal = p.fast_pass ? p.fast_pass.toString().trim() : '';
-      let fpBadge = `<span class="badge badge-gray">N/A</span>`;
-      if (isFastPass(p.fast_pass)) fpBadge = `<span class="badge badge-green">✓ Fast Pass</span>`;
-      else if (fpVal.toLowerCase() === 'no') fpBadge = `<span class="badge badge-amber">No</span>`;
-      return `<tr>
-        <td>${p.borrower}</td><td>${p.loan_officer}</td><td>${p.processor||'—'}</td>
-        <td style="font-family:var(--mono)">${fmtFull(p.amount||0)}</td>
-        <td>${normalizeLender(p.lender)}</td><td>${p.purpose||''}</td>
-        <td><span class="badge badge-blue">${p.loan_type||''}</span></td>
-        <td>${fpBadge}</td>
-        <td style="font-family:var(--mono)">${p.rate ? p.rate.toFixed(3)+'%' : '—'}</td>
-        <td>—</td>
-        <td><span class="badge badge-green">Funded ${p.funded_date}</span></td>
-      </tr>`;
-    }).join('');
+    tbody.innerHTML = f.length ? f.map(p => buildRow(p, '—', `<span class="badge badge-green">Funded ${p.funded_date}</span>`)).join('')
+                               : `<tr><td colspan="11" class="empty">No funded loans this month</td></tr>`;
+    return;
+  }
+
+  if (mtd === 'left_to_fund') {
+    let f = RAW.pipeline.filter(p => p.funded_date && p.funded_date.startsWith(monthPfx) && p.funded_date > today);
+    if (lo)        f = f.filter(p => p.loan_officer === lo);
+    if (lender)    f = f.filter(p => normalizeLender(p.lender) === lender);
+    if (processor) f = f.filter(p => (p.processor||'') === processor);
+    if (search)    f = f.filter(p => p.borrower.toLowerCase().includes(search));
+    tbody.innerHTML = f.length ? f.map(p => buildRow(p, p.actual_close||p.contract_close||'—', `<span class="badge badge-amber">In Process</span>`)).join('')
+                               : `<tr><td colspan="11" class="empty">No loans left to fund this month</td></tr>`;
     return;
   }
 
@@ -793,35 +804,16 @@ function renderPipelineTable() {
   if (lo)        data = data.filter(p => p.loan_officer === lo);
   if (lender)    data = data.filter(p => normalizeLender(p.lender) === lender);
   if (processor) data = data.filter(p => (p.processor||'') === processor);
-  if (mtd === 'left_to_fund') data = data.filter(p => p.funded_date && p.funded_date.startsWith(monthPfx) && p.funded_date > today);
   if (search)    data = data.filter(p => p.borrower.toLowerCase().includes(search));
-  tbody = document.getElementById('pipeline-tbody');
-  if (!data.length) { tbody.innerHTML = `<tr><td colspan="11" class="empty">No loans match filters</td></tr>`; return; }
-  tbody.innerHTML = data.map(p => {
-    const fpVal = p.fast_pass ? p.fast_pass.toString().trim() : '';
-    let fpBadge = `<span class="badge badge-gray">N/A</span>`;
-    if (isFastPass(p.fast_pass)) fpBadge = `<span class="badge badge-green">✓ Fast Pass</span>`;
-    else if (fpVal.toLowerCase() === 'no') fpBadge = `<span class="badge badge-amber">No</span>`;
-    const today2 = new Date().toISOString().slice(0,10);
-    const statusBadge = (p.funded_date && p.funded_date <= today2)
+  const t2 = new Date().toISOString().slice(0,10);
+  tbody.innerHTML = data.length ? data.map(p => {
+    const status = (p.funded_date && p.funded_date <= t2)
       ? `<span class="badge badge-green">Funded ${p.funded_date}</span>`
       : `<span class="badge badge-amber">In Process</span>`;
-    const closeDate = p.actual_close || p.contract_close || '—';
-    return `<tr>
-      <td>${p.borrower}</td>
-      <td>${p.loan_officer}</td>
-      <td>${p.processor||'—'}</td>
-      <td style="font-family:var(--mono)">${fmtFull(p.amount||0)}</td>
-      <td>${normalizeLender(p.lender)}</td>
-      <td>${p.purpose||''}</td>
-      <td><span class="badge badge-blue">${p.loan_type||''}</span></td>
-      <td>${fpBadge}</td>
-      <td style="font-family:var(--mono)">${p.rate ? p.rate.toFixed(3)+'%' : '—'}</td>
-      <td style="font-family:var(--mono)">${closeDate}</td>
-      <td>${statusBadge}</td>
-    </tr>`;
-  }).join('');
+    return buildRow(p, p.actual_close||p.contract_close||'—', status);
+  }).join('') : `<tr><td colspan="11" class="empty">No loans match filters</td></tr>`;
 }
+
 
 function renderPipelineCharts(active) {
   const byLO = groupBy(active, 'loan_officer');
