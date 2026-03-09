@@ -28,9 +28,8 @@ jobs:
 
       - name: Download spreadsheet from SharePoint
         env:
-          SHAREPOINT_FILE_URL: ${{ secrets.SHAREPOINT_FILE_URL }}
-          SHAREPOINT_USER: ${{ secrets.SHAREPOINT_USER }}
-          SHAREPOINT_PASS: ${{ secrets.SHAREPOINT_PASS }}
+          SHAREPOINT_CLIENT_ID: ${{ secrets.SHAREPOINT_CLIENT_ID }}
+          SHAREPOINT_CLIENT_SECRET: ${{ secrets.SHAREPOINT_CLIENT_SECRET }}
         run: python download_spreadsheet.py
 
       - name: Rebuild dashboard
