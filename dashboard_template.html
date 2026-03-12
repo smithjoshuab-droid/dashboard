@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>APEX Mortgage · Loan Dashboard</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1134,16 +1135,111 @@ function showPage(name) {
 }
 
 // ===================== FILE UPLOAD =====================
+function showNotice(msg, color) {
+  const n = document.createElement('div');
+  n.style.cssText = `position:fixed;top:70px;right:20px;background:${color||'#10b981'};color:white;padding:12px 20px;border-radius:8px;font-family:var(--mono);font-size:12px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3)`;
+  n.textContent = msg;
+  document.body.appendChild(n);
+  setTimeout(()=>n.remove(), 4000);
+}
+
+function parseDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return v.toISOString().slice(0,10);
+  const s = v.toString().trim();
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0,10);
+  // Excel serial number
+  if (!isNaN(s) && s.length < 6) {
+    const d = new Date(Math.round((parseFloat(s) - 25569) * 86400 * 1000));
+    return d.toISOString().slice(0,10);
+  }
+  const d = new Date(s);
+  return isNaN(d) ? null : d.toISOString().slice(0,10);
+}
+
+function fpStr(v) {
+  if (!v) return 'N/A';
+  const s = v.toString().trim();
+  return s || 'N/A';
+}
+
+function readPipelineSheet(ws) {
+  const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+  return rows.map(r => ({
+    borrower:     (r['Borrower']||'').toString().trim(),
+    loan_officer: (r['Loan Officer']||'').toString().trim(),
+    amount:       parseFloat(r['Total Loan Amount'])||0,
+    fast_pass:    fpStr(r['Fast Pass']),
+    lender:       (r['Lender']||'').toString().trim(),
+    purpose:      (r['Purpose']||'').toString().trim(),
+    loan_type:    (r['Loan Type']||'').toString().trim(),
+    processor:    (r['Processor']||'').toString().trim(),
+    loa:          (r['LOA']||'').toString().trim(),
+    contract_close: parseDate(r['Contract Close Date']),
+    actual_close:   parseDate(r['Actual Close Date']),
+    funded_date:    parseDate(r['Funded Date']),
+    rate:           parseFloat(r['Interest Rate'])||0,
+  })).filter(r => r.borrower);
+}
+
+function readFundedSheet(ws) {
+  const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+  return rows.map(r => ({
+    borrower:     (r['Borrower']||'').toString().trim(),
+    loan_officer: (r['Loan Officer']||'').toString().trim(),
+    amount:       parseFloat(r['Total Loan Amount'])||0,
+    fast_pass:    fpStr(r['Fast Pass']),
+    lender:       (r['Lender']||'').toString().trim(),
+    purpose:      (r['Purpose']||'').toString().trim(),
+    loan_type:    (r['Loan Type']||'').toString().trim(),
+    processor:    (r['Processor']||'').toString().trim(),
+    funded_date:  parseDate(r['Funded Date']),
+    rate:         parseFloat(r['Interest Rate'])||0,
+  })).filter(r => r.borrower);
+}
+
 function handleFileUpload(input) {
   const file = input.files[0];
   if (!file) return;
-  const notice = document.createElement('div');
-  notice.style.cssText = 'position:fixed;top:70px;right:20px;background:#10b981;color:white;padding:12px 20px;border-radius:8px;font-family:var(--mono);font-size:12px;z-index:999;box-shadow:0 4px 20px rgba(0,0,0,0.3)';
-  notice.textContent = `✓ "${file.name}" uploaded — data refreshed`;
-  document.body.appendChild(notice);
-  setTimeout(()=>notice.remove(),3500);
-  // In a real deployment this would parse the XLSX and replace RAW data
-  // For now it acknowledges the upload
+  // Reset the input so the same file can be re-uploaded if needed
+  input.value = '';
+
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, {type:'array', cellDates:false});
+
+      const pipelineWS  = wb.Sheets['Loan Pipeline'];
+      const funded26WS  = wb.Sheets['Apex Funded 2026'];
+      const funded25WS  = wb.Sheets['Apex Funded 2025'];
+
+      if (!pipelineWS || !funded26WS) {
+        showNotice('✗ Could not find required sheets. Check sheet names.', '#ef4444');
+        return;
+      }
+
+      RAW.pipeline   = readPipelineSheet(pipelineWS);
+      RAW.funded2026 = readFundedSheet(funded26WS);
+      RAW.funded2025 = funded25WS ? readFundedSheet(funded25WS) : [];
+
+      // Re-render whichever page is currently active
+      const activePage = document.querySelector('.page[style*="block"], .page.active');
+      const activeNav  = document.querySelector('.nav-tab.active');
+      const pageName   = activeNav ? activeNav.textContent.trim().toLowerCase() : 'overview';
+      showPage(pageName);
+
+      // Update the header timestamp
+      const ts = document.querySelector('header .timestamp, header small, header span');
+      if (ts) ts.textContent = `Updated from ${file.name}`;
+
+      showNotice(`✓ "${file.name}" loaded — ${RAW.pipeline.length} pipeline · ${RAW.funded2026.length} funded 2026`);
+    } catch(err) {
+      showNotice('✗ Error reading file: ' + err.message, '#ef4444');
+      console.error('Upload error:', err);
+    }
+  };
+  reader.readAsArrayBuffer(file);
 }
 
 // ===================== INIT =====================
